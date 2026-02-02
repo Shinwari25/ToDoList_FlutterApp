@@ -933,7 +933,9 @@ class _DashboardState extends State<Dashboard> {
                                           children: [
                                             SlidableAction(
                                               onPressed: (context) => _displayEditDialog(context, index),
-                                              backgroundColor: Colors.orange,
+                                              backgroundColor: Colors
+                                                  .lightBlueAccent
+                                                  .withOpacity(0.9),
                                               foregroundColor: Colors.white,
                                               icon: Icons.edit,
                                               label: 'Edit',
@@ -949,7 +951,8 @@ class _DashboardState extends State<Dashboard> {
                                                   await deleteItem(id, title);
                                                 }
                                               },
-                                              backgroundColor: Colors.red,
+                                              backgroundColor: Colors.red
+                                                  .withOpacity(0.9),
                                               foregroundColor: Colors.white,
                                               icon: Icons.delete,
                                               label: 'Delete',
