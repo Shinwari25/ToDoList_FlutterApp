@@ -127,3 +127,70 @@ export const toggleTodo = async (req, res, next) => {
     });
   }
 };
+
+export const updateToDo = async (req, res, next) => {
+  try {
+    const { id, title, desc } = req.body;
+
+    if (!id || id.trim() === "") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Todo ID is required" });
+    }
+
+    // Prepare data to update
+    const updateData = {};
+    if (title !== undefined && title !== null) updateData.title = title.trim();
+    if (desc !== undefined && desc !== null)
+      updateData.description = desc.trim();
+
+    if (Object.keys(updateData).length === 0) {
+      return res
+        .status(400)
+        .json({ status: false, message: "No fields to update" });
+    }
+
+    const updatedTodo = await ToDoModel.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedTodo) {
+      return res.status(404).json({ status: false, message: "Todo not found" });
+    }
+
+    res.json({
+      status: true,
+      success: updatedTodo,
+      message: "Todo updated successfully",
+      data: {
+        id: updatedTodo._id,
+        title: updatedTodo.title,
+        description: updatedTodo.description,
+        updatedAt: updatedTodo.updatedAt,
+      },
+    });
+  } catch (error) {
+    if (error.name === "CastError") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid todo ID format" });
+    }
+    if (error.name === "ValidationError") {
+      return res
+        .status(400)
+        .json({
+          status: false,
+          message: "Validation failed",
+          errors: error.errors,
+        });
+    }
+    res
+      .status(500)
+      .json({
+        status: false,
+        message: error.message || "Failed to update todo",
+        error: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      });
+  }
+};

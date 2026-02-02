@@ -94,7 +94,7 @@ class _DashboardState extends State<Dashboard> {
 
       var response = await http
           .post(
-            Uri.parse("http://localhost:5000/createToDo"),
+            Uri.parse("https://todolist-flutterapp.onrender.com/createToDo"),
             headers: {
               "Content-Type": "application/json",
               "Accept": "application/json",
@@ -198,10 +198,11 @@ class _DashboardState extends State<Dashboard> {
     try {
       final response = await http
           .post(
-            Uri.parse("http://localhost:5000/toggleTodo"),
+            Uri.parse("https://todolist-flutterapp.onrender.com/toggleTodo"),
             headers: {
               "Content-Type": "application/json",
               "Accept": "application/json",
+              "Authorization": "Bearer ${widget.token}",
             },
             body: jsonEncode({"id": todoId}),
           )
@@ -265,10 +266,13 @@ class _DashboardState extends State<Dashboard> {
 
       var response = await http
           .get(
-            Uri.parse("http://localhost:5000/getUserTodoList?userId=$userId"),
-            headers: {"Accept": "application/json"},
+            Uri.parse("https://todolist-flutterapp.onrender.com/getUserTodoList?userId=$userId"),
+            headers: {
+              "Accept": "application/json",
+              "Authorization": "Bearer ${widget.token}"
+            }
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 15));
 
       // print('📥 Todos response: ${response.statusCode}');
 
@@ -342,14 +346,15 @@ class _DashboardState extends State<Dashboard> {
     try {
       final response = await http
           .post(
-            Uri.parse("http://localhost:5000/deleteTodo"),
+            Uri.parse("https://todolist-flutterapp.onrender.com/deleteTodo"),
             headers: {
               "Content-Type": "application/json",
               "Accept": "application/json",
+              "Authorization": "Bearer ${widget.token}",
             },
             body: jsonEncode({"id": id}),
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 15));
 
       if (_isHtmlResponse(response.body)) {
         throw FormatException('Server returned HTML instead of JSON');
@@ -376,6 +381,211 @@ class _DashboardState extends State<Dashboard> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       _showSnackBar('Failed to delete: ${e.toString()}', Colors.red);
     }
+  }
+
+  Future<void> updateTodoItem(String id, int index) async {
+    if (id.isEmpty) {
+      _showSnackBar('Cannot update - invalid id', Colors.red);
+      return;
+    }
+
+    if (_todoTitle.text.isEmpty || _todoDesc.text.isEmpty) {
+      _showSnackBar('Please enter both title and description', Colors.orange);
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse("https://todolist-flutterapp.onrender.com/updateTodo"),
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "Authorization": "Bearer ${widget.token}",
+            },
+            body: jsonEncode({
+              "id": id,
+              "title": _todoTitle.text.trim(),
+              "desc": _todoDesc.text.trim(),
+            }),
+          )
+          .timeout(Duration(seconds: 15));
+
+      if (_isHtmlResponse(response.body)) {
+        throw FormatException('Server returned HTML instead of JSON');
+      }
+
+      final jsonResponse = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && jsonResponse['status'] == true) {
+        Navigator.pop(context); // close dialog
+        _todoTitle.clear();
+        _todoDesc.clear();
+
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        _showSnackBar('✅ Todo updated successfully', Colors.green);
+
+        await getTodoList(userId!);
+      } else {
+        final msg = jsonResponse['message'] ?? 'Update failed';
+        throw Exception(msg);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      _showSnackBar('Failed to update: ${e.toString()}', Colors.red);
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _displayEditDialog(BuildContext context, int index) async {
+    final item = items[index];
+    _todoTitle.text = item['title']?.toString() ?? '';
+    _todoDesc.text = item['desc']?.toString() ?? item['description']?.toString() ?? '';
+
+    return showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Edit Task',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey[800],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 20),
+                  TextField(
+                    controller: _todoTitle,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: "Task Title *",
+                      hintText: "What needs to be done?",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                      prefixIcon: Icon(
+                        Icons.title,
+                        color: Colors.lightBlueAccent,
+                      ),
+                    ),
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: _todoDesc,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: "Description",
+                      hintText: "Add details (optional)...",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                      prefixIcon: Icon(
+                        Icons.description,
+                        color: Colors.lightBlueAccent,
+                      ),
+                    ),
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            _todoTitle.clear();
+                            _todoDesc.clear();
+                            Navigator.pop(context);
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.grey[300]!),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  final id = items[index]['_id']?.toString();
+                                  if (id != null) await updateTodoItem(id, index);
+                                },
+                          style: ElevatedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: Colors.lightBlueAccent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: isLoading
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  "Update Task",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showSnackBar(String message, Color color, {Duration? duration}) {
@@ -721,6 +931,16 @@ class _DashboardState extends State<Dashboard> {
                                         endActionPane: ActionPane(
                                           motion: ScrollMotion(),
                                           children: [
+                                            SlidableAction(
+                                              onPressed: (context) => _displayEditDialog(context, index),
+                                              backgroundColor: Colors.orange,
+                                              foregroundColor: Colors.white,
+                                              icon: Icons.edit,
+                                              label: 'Edit',
+                                              borderRadius: BorderRadius.only(
+                                                topRight: Radius.circular(12),
+                                              ),
+                                            ),
                                             SlidableAction(
                                               onPressed: (context) async {
                                                 final id =
