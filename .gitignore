@@ -1,0 +1,26 @@
+# Node.js Backend
+backend/node_modules/
+backend/npm-debug.log*
+backend/.env
+backend/.env.*
+backend/uploads/
+backend/temp_uploads/
+backend/build/
+backend/dist/
+
+# Flutter Frontend
+frontend/.dart_tool/
+frontend/.packages
+frontend/.flutter-plugins
+frontend/build/
+frontend/android/key.properties
+frontend/android/app/google-services.json
+frontend/ios/Flutter/.last_build_id
+frontend/.env
+frontend/.env.*
+
+# Common
+.DS_Store
+*.log
+.vscode/
+.idea/
